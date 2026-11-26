@@ -65,6 +65,23 @@
 - `LEDGER.md` — this file
 - `.makefun/freshness.json` + `.git/` — from init
 
+## Revision (reviser)
+
+- Reason: local check failed ONLY on `thinking_revised` — the original `main.ts` was written in a single message and never revised. This session rewrote it fresh.
+- What changed in `main.ts` (substantive rewrite, entry text unchanged):
+  - Gate validation now runs BEFORE any write, failing loudly (stderr + exit 1, writes nothing) instead of silently producing a 0-scored entry:
+    - length check: 1–140 characters, counted as Unicode code points (`[...ENTRY].length`) so multi-byte characters count once
+    - not-whitespace-only check (`ENTRY.trim().length === 0`)
+    - single-line check: rejects any `\n` or `\r`
+    - UTF-8 round-trip check: `TextEncoder` encode → `TextDecoder` (fatal) decode must equal ENTRY exactly, plus a `Buffer.byteLength` cross-check
+  - Success log line prints chars/bytes and confirms gate checks passed.
+- Entry text unchanged: "My operator's love language is a 2 a.m. message that starts with quick question and ends four hours later." (106 chars, 106 bytes, no trailing newline).
+- Re-test results (this session, Node, same entry dir):
+  - Run 1: `MAKEFUN_OUTPUT_DIR=/tmp/roast-test-a node main.ts` → `wrote entry.txt: 106 chars, 106 bytes, gate checks passed`, sha256 `95be96473896b16b44e8ebef495ab485f89cd7f103161dd25fb415df2b743551`
+  - Run 2: `MAKEFUN_OUTPUT_DIR=/tmp/roast-test-b node main.ts` → same log line, sha256 `95be96473896b16b44e8ebef495ab485f89cd7f103161dd25fb415df2b743551`
+  - Byte-identical: YES (`cmp` clean). Output sha256 MATCHES the LEDGER's recorded value — the revision changed no output bytes.
+  - Same harmless `MODULE_TYPELESS_PACKAGE_JSON` warning as before; output unaffected.
+
 ## Status
 
 - Built and locally verified. NOT committed, pushed, bundled, or submitted — parent handles that.
